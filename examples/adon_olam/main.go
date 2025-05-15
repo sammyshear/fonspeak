@@ -2,12 +2,20 @@ package main
 
 import (
 	"log"
+	"os"
 
 	"github.com/sammyshear/fonspeak"
 )
 
 func main() {
-	err := fonspeak.FonspeakPhrase(fonspeak.PhraseParams{
+	f, err := os.Create("adon_olam.wav")
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	defer f.Close()
+
+	err = fonspeak.FonspeakPhrase(fonspeak.PhraseParams{
 		Syllables: []fonspeak.Params{
 			{
 				Syllable:   "ad",
@@ -50,7 +58,7 @@ func main() {
 				Voice:      "he",
 			},
 		},
-		WavFile: "adon_olam.wav",
+		WavFile: f,
 	})
 	if err != nil {
 		log.Fatal(err)

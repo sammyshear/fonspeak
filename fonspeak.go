@@ -2,6 +2,7 @@ package fonspeak
 
 import (
 	"fmt"
+	"io"
 	"os"
 	"os/exec"
 )
@@ -19,7 +20,8 @@ type FonParams struct {
 
 type PhraseParams struct {
 	Syllables []Params
-	WavFile   string
+	WavFile   io.WriteCloser
+	Filename  string
 }
 
 func pitchShift(wave string, shift float64) error {
@@ -67,12 +69,41 @@ func FonspeakPhrase(params PhraseParams) error {
 		waves = append(waves, fpr.WavFile)
 	}
 
-	waves = append(waves, params.WavFile)
+	t, err := os.MkdirTemp("", "finished")
+	if err != nil {
+		return err
+	}
+
+	defer os.RemoveAll(t)
+	filename := fmt.Sprintf("%s/finished.wav", t)
+
+	waves = append(waves, filename)
 
 	cmd := exec.Command("sox", waves...)
 	if err = cmd.Run(); err != nil {
 		return err
 	}
+
+	f, err := os.Open(filename)
+	if err != nil {
+		return err
+	}
+
+	defer f.Close()
+
+	stats, err := f.Stat()
+	if err != nil {
+		return err
+	}
+
+	b := make([]byte, stats.Size())
+
+	_, err = f.Read(b)
+	if err != nil {
+		return err
+	}
+
+	params.WavFile.Write(b)
 
 	return nil
 }
