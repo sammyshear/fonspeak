@@ -2,6 +2,10 @@
 
 Fonspeak is a very simple espeak wrapper I wrote for my own purposes that can synthesize speech at exact pitches per syllable.
 
+## Requirements
+
+Requires `espeak-ng`, `sox`, and `python` with the packages `librosa`, `psola`, and `soundfile`.
+
 ## Example
 
 This example creates an audio file `adon_olam.wav` that says "adon olam asher malakh" using espeak and pitches the syllables to be on a scale.
