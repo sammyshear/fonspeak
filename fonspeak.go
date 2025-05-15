@@ -21,7 +21,6 @@ type FonParams struct {
 type PhraseParams struct {
 	Syllables []Params
 	WavFile   io.WriteCloser
-	Filename  string
 }
 
 func pitchShift(wave string, shift float64) error {
