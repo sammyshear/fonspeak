@@ -43,7 +43,7 @@ func pitchShift(wave string, shift float64) error {
 	return nil
 }
 
-func FonspeakSyllable(params FonParams, wg *sync.WaitGroup, ch chan SyllableResult, ctx context.Context) {
+func FonspeakSyllable(params FonParams, wg *sync.WaitGroup, ch chan SyllableResult, ctx context.Context, cancel context.CancelFunc) {
 	defer wg.Done()
 	cmd := exec.CommandContext(ctx, "espeak-ng", "-v", params.Voice, "-w", params.WavFile, "-z", fmt.Sprintf("[[%s]]", params.Syllable))
 	if err := cmd.Start(); err != nil {
@@ -51,7 +51,7 @@ func FonspeakSyllable(params FonParams, wg *sync.WaitGroup, ch chan SyllableResu
 			Message: "Error",
 			Error:   err,
 		}
-		return
+		cancel()
 	}
 
 	cmd.Wait()
@@ -62,22 +62,23 @@ func FonspeakSyllable(params FonParams, wg *sync.WaitGroup, ch chan SyllableResu
 			Message: "Error",
 			Error:   err,
 		}
-		return
+		cancel()
 	}
 
 	ch <- SyllableResult{
 		Message: "Done",
 		Error:   nil,
 	}
+	cancel()
 }
 
 func FonspeakPhrase(params PhraseParams) error {
 	var wg sync.WaitGroup
 	ch := make(chan SyllableResult)
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second*20)
-	defer cancel()
 	dir, err := os.MkdirTemp("", "phonemes")
 	if err != nil {
+		cancel()
 		return err
 	}
 
@@ -92,13 +93,14 @@ func FonspeakPhrase(params PhraseParams) error {
 			WavFile: fmt.Sprintf("%s/%d.wav", dir, i),
 		}
 		waves = append(waves, fpr.WavFile)
-		go FonspeakSyllable(fpr, &wg, ch, ctx)
+		go FonspeakSyllable(fpr, &wg, ch, ctx, cancel)
 	}
 
 	for range params.Syllables {
 		res := <-ch
 		err = res.Error
 		if err != nil {
+			cancel()
 			return err
 		}
 	}
@@ -107,6 +109,7 @@ func FonspeakPhrase(params PhraseParams) error {
 
 	t, err := os.MkdirTemp("", "finished")
 	if err != nil {
+		cancel()
 		return err
 	}
 
@@ -117,11 +120,13 @@ func FonspeakPhrase(params PhraseParams) error {
 
 	cmd := exec.Command("sox", waves...)
 	if err = cmd.Run(); err != nil {
+		cancel()
 		return err
 	}
 
 	f, err := os.Open(filename)
 	if err != nil {
+		cancel()
 		return err
 	}
 
@@ -129,6 +134,7 @@ func FonspeakPhrase(params PhraseParams) error {
 
 	stats, err := f.Stat()
 	if err != nil {
+		cancel()
 		return err
 	}
 
@@ -136,10 +142,12 @@ func FonspeakPhrase(params PhraseParams) error {
 
 	_, err = f.Read(b)
 	if err != nil {
+		cancel()
 		return err
 	}
 
 	params.WavFile.Write(b)
 
+	cancel()
 	return nil
 }
