@@ -58,7 +58,7 @@ func FonspeakSyllable(params FonParams) error {
 
 func FonspeakPhrase(params PhraseParams, grMax int) error {
 	var wg sync.WaitGroup
-	ch := make(chan error)
+	var goErr error
 	goroutines := make(chan struct{}, grMax)
 	dir, err := os.MkdirTemp("", "phonemes")
 	if err != nil {
@@ -80,22 +80,17 @@ func FonspeakPhrase(params PhraseParams, grMax int) error {
 		go func() {
 			defer func() { <-goroutines; wg.Done() }()
 			if err := FonspeakSyllable(fpr); err != nil {
-				ch <- err
+				goErr = err
 				return
 			}
-
-			ch <- nil
 		}()
 	}
 
-	for range params.Syllables {
-		err := <-ch
-		if err != nil {
-			return err
-		}
-	}
-
 	wg.Wait()
+
+	if goErr != nil {
+		return goErr
+	}
 
 	t, err := os.MkdirTemp("", "finished")
 	if err != nil {
