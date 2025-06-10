@@ -6,8 +6,6 @@ import (
 	"io"
 	"os"
 	"os/exec"
-	"sync"
-	"time"
 )
 
 type SyllableResult struct {
@@ -43,41 +41,25 @@ func pitchShift(wave string, shift float64) error {
 	return nil
 }
 
-func FonspeakSyllable(params FonParams, wg *sync.WaitGroup, ch chan SyllableResult, ctx context.Context, cancel context.CancelFunc, grMaxChan chan int) {
-	defer func() { wg.Done(); <-grMaxChan }()
-	cmd := exec.CommandContext(ctx, "espeak-ng", "-v", params.Voice, "-w", params.WavFile, "-z", fmt.Sprintf("[[%s]]", params.Syllable))
+func FonspeakSyllable(params FonParams) error {
+	cmd := exec.CommandContext(context.Background(), "espeak-ng", "-v", params.Voice, "-w", params.WavFile, "-z", fmt.Sprintf("[[%s]]", params.Syllable))
 	if err := cmd.Run(); err != nil {
-		ch <- SyllableResult{
-			Message: "Error",
-			Error:   err,
-		}
-		cancel()
+		return err
 	}
 
 	err := pitchShift(params.WavFile, params.PitchShift)
 	if err != nil {
-		ch <- SyllableResult{
-			Message: "Error",
-			Error:   err,
-		}
-		cancel()
+		return err
 	}
 
-	ch <- SyllableResult{
-		Message: "Done",
-		Error:   nil,
-	}
-	cancel()
+	return nil
 }
 
 func FonspeakPhrase(params PhraseParams, grMax int) error {
-	var wg sync.WaitGroup
-	ch := make(chan SyllableResult)
-	grMaxChan := make(chan int, grMax)
-	ctx, cancel := context.WithTimeout(context.Background(), time.Second*20)
+	ch := make(chan error)
+	goroutines := make(chan struct{}, grMax)
 	dir, err := os.MkdirTemp("", "phonemes")
 	if err != nil {
-		cancel()
 		return err
 	}
 
@@ -86,29 +68,29 @@ func FonspeakPhrase(params PhraseParams, grMax int) error {
 	var waves []string
 
 	for i, pr := range params.Syllables {
-		wg.Add(1)
 		fpr := FonParams{
 			Params:  pr,
 			WavFile: fmt.Sprintf("%s/%d.wav", dir, i),
 		}
 		waves = append(waves, fpr.WavFile)
-		go FonspeakSyllable(fpr, &wg, ch, ctx, cancel, grMaxChan)
-	}
+		goroutines <- struct{}{}
+		go func() {
+			defer func() { <-goroutines }()
+			if err := FonspeakSyllable(fpr); err != nil {
+				ch <- err
+				return
+			}
 
-	for range params.Syllables {
-		res := <-ch
-		err = res.Error
+			ch <- nil
+		}()
+		err := <-ch
 		if err != nil {
-			cancel()
 			return err
 		}
 	}
 
-	wg.Wait()
-
 	t, err := os.MkdirTemp("", "finished")
 	if err != nil {
-		cancel()
 		return err
 	}
 
@@ -119,13 +101,11 @@ func FonspeakPhrase(params PhraseParams, grMax int) error {
 
 	cmd := exec.Command("sox", waves...)
 	if err = cmd.Run(); err != nil {
-		cancel()
 		return err
 	}
 
 	f, err := os.Open(filename)
 	if err != nil {
-		cancel()
 		return err
 	}
 
@@ -133,7 +113,6 @@ func FonspeakPhrase(params PhraseParams, grMax int) error {
 
 	stats, err := f.Stat()
 	if err != nil {
-		cancel()
 		return err
 	}
 
@@ -141,12 +120,10 @@ func FonspeakPhrase(params PhraseParams, grMax int) error {
 
 	_, err = f.Read(b)
 	if err != nil {
-		cancel()
 		return err
 	}
 
 	params.WavFile.Write(b)
 
-	cancel()
 	return nil
 }
