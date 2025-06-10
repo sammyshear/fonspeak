@@ -54,8 +54,6 @@ func FonspeakSyllable(params FonParams, wg *sync.WaitGroup, ch chan SyllableResu
 		cancel()
 	}
 
-	cmd.Wait()
-
 	err := pitchShift(params.WavFile, params.PitchShift)
 	if err != nil {
 		ch <- SyllableResult{
@@ -119,7 +117,7 @@ func FonspeakPhrase(params PhraseParams) error {
 	waves = append(waves, filename)
 
 	cmd := exec.Command("sox", waves...)
-	if err = cmd.Run(); err != nil {
+	if err = cmd.Start(); err != nil {
 		cancel()
 		return err
 	}
