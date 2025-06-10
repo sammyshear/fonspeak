@@ -6,6 +6,7 @@ import (
 	"io"
 	"os"
 	"os/exec"
+	"sync"
 )
 
 type SyllableResult struct {
@@ -56,6 +57,7 @@ func FonspeakSyllable(params FonParams) error {
 }
 
 func FonspeakPhrase(params PhraseParams, grMax int) error {
+	var wg sync.WaitGroup
 	ch := make(chan error)
 	goroutines := make(chan struct{}, grMax)
 	dir, err := os.MkdirTemp("", "phonemes")
@@ -74,8 +76,9 @@ func FonspeakPhrase(params PhraseParams, grMax int) error {
 		}
 		waves = append(waves, fpr.WavFile)
 		goroutines <- struct{}{}
+		wg.Add(1)
 		go func() {
-			defer func() { <-goroutines }()
+			defer func() { <-goroutines; wg.Done() }()
 			if err := FonspeakSyllable(fpr); err != nil {
 				ch <- err
 				return
@@ -91,6 +94,8 @@ func FonspeakPhrase(params PhraseParams, grMax int) error {
 			return err
 		}
 	}
+
+	wg.Wait()
 
 	t, err := os.MkdirTemp("", "finished")
 	if err != nil {
