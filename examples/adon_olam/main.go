@@ -59,7 +59,7 @@ func main() {
 			},
 		},
 		WavFile: f,
-	})
+	}, 15)
 	if err != nil {
 		log.Fatal(err)
 	}

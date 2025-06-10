@@ -32,7 +32,7 @@ func main() {
 		Syllables: []fonspeak.Params{
 			{
 				Syllable:   "ad",
-				PitchShift: 293.66,
+				PitchShift: 261.63,
 				Voice:      "he",
 			},
 			{
@@ -72,10 +72,9 @@ func main() {
 			},
 		},
 		WavFile: f,
-	})
+	}, 15)
 	if err != nil {
 		log.Fatal(err)
 	}
 }
-
 ```

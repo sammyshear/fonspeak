@@ -43,10 +43,10 @@ func pitchShift(wave string, shift float64) error {
 	return nil
 }
 
-func FonspeakSyllable(params FonParams, wg *sync.WaitGroup, ch chan SyllableResult, ctx context.Context, cancel context.CancelFunc) {
-	defer wg.Done()
+func FonspeakSyllable(params FonParams, wg *sync.WaitGroup, ch chan SyllableResult, ctx context.Context, cancel context.CancelFunc, grMaxChan chan int) {
+	defer func() { wg.Done(); <-grMaxChan }()
 	cmd := exec.CommandContext(ctx, "espeak-ng", "-v", params.Voice, "-w", params.WavFile, "-z", fmt.Sprintf("[[%s]]", params.Syllable))
-	if err := cmd.Start(); err != nil {
+	if err := cmd.Run(); err != nil {
 		ch <- SyllableResult{
 			Message: "Error",
 			Error:   err,
@@ -70,9 +70,10 @@ func FonspeakSyllable(params FonParams, wg *sync.WaitGroup, ch chan SyllableResu
 	cancel()
 }
 
-func FonspeakPhrase(params PhraseParams) error {
+func FonspeakPhrase(params PhraseParams, grMax int) error {
 	var wg sync.WaitGroup
 	ch := make(chan SyllableResult)
+	grMaxChan := make(chan int, grMax)
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second*20)
 	dir, err := os.MkdirTemp("", "phonemes")
 	if err != nil {
@@ -91,7 +92,7 @@ func FonspeakPhrase(params PhraseParams) error {
 			WavFile: fmt.Sprintf("%s/%d.wav", dir, i),
 		}
 		waves = append(waves, fpr.WavFile)
-		go FonspeakSyllable(fpr, &wg, ch, ctx, cancel)
+		go FonspeakSyllable(fpr, &wg, ch, ctx, cancel, grMaxChan)
 	}
 
 	for range params.Syllables {
@@ -117,7 +118,7 @@ func FonspeakPhrase(params PhraseParams) error {
 	waves = append(waves, filename)
 
 	cmd := exec.Command("sox", waves...)
-	if err = cmd.Start(); err != nil {
+	if err = cmd.Run(); err != nil {
 		cancel()
 		return err
 	}
