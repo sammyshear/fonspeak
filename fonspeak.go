@@ -83,6 +83,9 @@ func FonspeakPhrase(params PhraseParams, grMax int) error {
 
 			ch <- nil
 		}()
+	}
+
+	for range params.Syllables {
 		err := <-ch
 		if err != nil {
 			return err
