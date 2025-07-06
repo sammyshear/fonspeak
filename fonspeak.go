@@ -70,7 +70,7 @@ func pitchShift(wave string, shift float64) error {
 
 	fmt.Printf("PitchRatio: %.2f\n", pitchRatio)
 
-	cmd := exec.CommandContext(context.Background(), "rubberband-r3", "-t", "1.0", "-p", fmt.Sprintf("%.1f", pitchRatio), wave, waveout)
+	cmd := exec.CommandContext(context.Background(), "rubberband-r3", "-t", "1.0", "-p", fmt.Sprintf("%.4f", pitchRatio), wave, waveout)
 	if err := cmd.Run(); err != nil {
 		return err
 	}
