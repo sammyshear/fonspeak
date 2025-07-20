@@ -4,7 +4,7 @@ Fonspeak is a very simple espeak wrapper I wrote for my own purposes that can sy
 
 ## Requirements
 
-Requires `espeak-ng`, `sox`, and `rubberband-r3`.
+Requires `espeak-ng`, `sox`, and `praat`.
 
 ## Example
 
