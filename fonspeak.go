@@ -2,14 +2,12 @@ package fonspeak
 
 import (
 	"context"
+	"embed"
 	"fmt"
 	"io"
-	"math"
 	"os"
 	"os/exec"
 	"sync"
-
-	"github.com/go-audio/wav"
 )
 
 type SyllableResult struct {
@@ -33,48 +31,23 @@ type PhraseParams struct {
 	WavFile   io.WriteCloser
 }
 
+//go:embed pitch.praat
+var content embed.FS
+
 func pitchShift(wave string, shift float64) error {
-	waveout := wave + "_out.wav"
-	f, err := os.Open(wave)
+	f, err := content.ReadFile("pitch.praat")
 	if err != nil {
 		return err
 	}
-
-	defer f.Close()
-
-	decoder := wav.NewDecoder(f)
-	buf, err := decoder.FullPCMBuffer()
+	pitcher, err := os.CreateTemp("", "pitch.praat")
 	if err != nil {
 		return err
 	}
+	pitcher.Write(f)
 
-	var audioData []float64
+	cmd := exec.Command("praat", "--run", "--no-pref-files", "--no-plugins", pitcher.Name(), wave, fmt.Sprintf("%f", shift))
 
-	numSamples := len(buf.Data) / buf.Format.NumChannels
-	audioData = make([]float64, numSamples)
-
-	for i := range numSamples {
-		// For mono, or just taking the first channel of stereo
-		audioData[i] = float64(buf.Data[i*buf.Format.NumChannels]) / math.Pow(2, float64(buf.SourceBitDepth-1)-1)
-	}
-	fmt.Printf("Read %d samples from WAV file.\n", len(audioData))
-
-	originalF0, err := estimateFundamentalFrequency(audioData, int(decoder.SampleRate))
-	if err != nil {
-		return fmt.Errorf("error estimating original F0: %v", err)
-	}
-
-	fmt.Printf("Estimated original F0: %.2f Hz\n", originalF0)
-
-	pitchRatio := shift / originalF0
-
-	fmt.Printf("PitchRatio: %.2f\n", pitchRatio)
-
-	cmd := exec.CommandContext(context.Background(), "rubberband-r3", "-t", "1.0", "-p", fmt.Sprintf("%.4f", pitchRatio), wave, waveout)
 	if err := cmd.Run(); err != nil {
-		return err
-	}
-	if err := os.Rename(waveout, wave); err != nil {
 		return err
 	}
 
@@ -104,7 +77,7 @@ func FonspeakPhrase(params PhraseParams, grMax int) error {
 		return err
 	}
 
-	// defer os.RemoveAll(dir)
+	defer os.RemoveAll(dir)
 
 	var waves []string
 
@@ -113,7 +86,7 @@ func FonspeakPhrase(params PhraseParams, grMax int) error {
 			Params:  pr,
 			WavFile: fmt.Sprintf("%s/%d.wav", dir, i),
 		}
-		waves = append(waves, fpr.WavFile)
+		waves = append(waves, fpr.WavFile+"_out.wav")
 		goroutines <- struct{}{}
 		wg.Add(1)
 		go func() {
