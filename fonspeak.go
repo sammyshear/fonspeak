@@ -49,7 +49,7 @@ func pitchShift(wave string, shift float64) error {
 	cmd := exec.Command("praat", "--run", "--no-pref-files", "--no-plugins", pitcher.Name(), wave, fmt.Sprintf("%f", shift))
 
 	if err := cmd.Run(); err != nil {
-		return err
+		return fmt.Errorf("error running praat: %w", err)
 	}
 
 	return nil
@@ -58,12 +58,12 @@ func pitchShift(wave string, shift float64) error {
 func FonspeakSyllable(params FonParams) error {
 	cmd := exec.CommandContext(context.Background(), "espeak-ng", "-v", params.Voice, "-w", params.WavFile, "-z", fmt.Sprintf("[[%s]]", params.Syllable), "-s", fmt.Sprintf("%d", params.Wpm))
 	if err := cmd.Run(); err != nil {
-		return err
+		return fmt.Errorf("error running espeak-ng: %w", err)
 	}
 
 	err := pitchShift(params.WavFile, params.PitchShift)
 	if err != nil {
-		return err
+		return fmt.Errorf("error running espeak-ng: %w", err)
 	}
 
 	return nil
@@ -117,7 +117,7 @@ func FonspeakPhrase(params PhraseParams, grMax int) error {
 
 	cmd := exec.Command("sox", waves...)
 	if err = cmd.Run(); err != nil {
-		return err
+		return fmt.Errorf("error running sox: %w", err)
 	}
 
 	f, err := os.Open(filename)
