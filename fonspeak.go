@@ -19,6 +19,7 @@ type Params struct {
 	Syllable   string
 	PitchShift float64
 	Voice      string
+	Wpm        int
 }
 
 type FonParams struct {
@@ -55,7 +56,7 @@ func pitchShift(wave string, shift float64) error {
 }
 
 func FonspeakSyllable(params FonParams) error {
-	cmd := exec.CommandContext(context.Background(), "espeak-ng", "-v", params.Voice, "-w", params.WavFile, "-z", fmt.Sprintf("[[%s]]", params.Syllable))
+	cmd := exec.CommandContext(context.Background(), "espeak-ng", "-v", params.Voice, "-w", params.WavFile, "-z", fmt.Sprintf("[[%s]]", params.Syllable), "-s", fmt.Sprintf("%d", params.Wpm))
 	if err := cmd.Run(); err != nil {
 		return err
 	}
