@@ -81,7 +81,7 @@ func FonspeakPhrase(params PhraseParams, grMax int) error {
 		return err
 	}
 
-	// defer os.RemoveAll(dir)
+	defer os.RemoveAll(dir)
 
 	var waves []string
 
