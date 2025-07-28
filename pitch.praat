@@ -5,13 +5,13 @@ endform
 snd = Read from file: file_name$
 selectObject(snd)
 
-manipulation = To Manipulation: 0.01, 50, 3000
+
+manipulation = To Manipulation: 0.01, 90, 3000
 pitchtier = Extract pitch tier
 
 original = Copy: "old"
 points = Get number of points
 
-writeInfoLine: points
 
 for p to points
   selectObject(original)

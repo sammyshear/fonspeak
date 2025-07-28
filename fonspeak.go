@@ -46,6 +46,9 @@ func pitchShift(wave string, shift float64) error {
 	}
 	pitcher.Write(f)
 
+	defer pitcher.Close()
+	defer os.Remove(pitcher.Name())
+
 	cmd := exec.Command("praat", "--run", "--no-pref-files", "--no-plugins", pitcher.Name(), wave, fmt.Sprintf("%f", shift))
 
 	if err := cmd.Run(); err != nil {
@@ -78,7 +81,7 @@ func FonspeakPhrase(params PhraseParams, grMax int) error {
 		return err
 	}
 
-	defer os.RemoveAll(dir)
+	// defer os.RemoveAll(dir)
 
 	var waves []string
 
