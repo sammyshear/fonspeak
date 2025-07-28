@@ -51,8 +51,8 @@ func pitchShift(wave string, shift float64) error {
 
 	cmd := exec.Command("praat", "--run", "--no-pref-files", "--no-plugins", pitcher.Name(), wave, fmt.Sprintf("%f", shift))
 
-	if err := cmd.Run(); err != nil {
-		return fmt.Errorf("error running praat: %w", err)
+	if out, err := cmd.CombinedOutput(); err != nil {
+		return fmt.Errorf("error running praat: %s ... %w", out, err)
 	}
 
 	return nil
