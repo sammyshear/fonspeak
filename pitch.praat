@@ -1,12 +1,14 @@
 form Pitch
   sentence File_name
   positive New_pitch
+  positive Time_step
+  positive Pitch_floor
 endform
 snd = Read from file: file_name$
 selectObject(snd)
 
 
-manipulation = To Manipulation: 0.01, 60, 3000
+manipulation = To Manipulation: time_step, pitch_floor, 3000
 pitchtier = Extract pitch tier
 
 original = Copy: "old"
